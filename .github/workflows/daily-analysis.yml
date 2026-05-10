@@ -119,6 +119,8 @@ jobs:
           STATUS: ${{ steps.analysis.outputs.exit_code == '0' && 'OK' || 'FAILED' }}
         run: |
           TITLE="📈 ${{ matrix.name }} — ${{ steps.nydate.outputs.date }} ($STATUS)"
+          gh label create "ticker:${{ matrix.name }}" --color "0E8A16" --force 2>/dev/null || true
+          gh label create "daily-analysis"           --color "5319E7" --force 2>/dev/null || true
           gh issue create \
             --title "$TITLE" \
             --body-file decision.md \
