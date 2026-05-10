@@ -1,0 +1,138 @@
+name: Daily Trading Analysis
+
+on:
+  # 13:00 UTC = 9 AM EDT (summer); 14:00 UTC = 9 AM EST (winter).
+  # Both fire year-round; the dst-guard job exits early when NY local hour != 9.
+  schedule:
+    - cron: "0 13 * * 1-5"
+    - cron: "0 14 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: "Ticker to run (QQQ, SPY, DIA). Leave blank to run all."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dst-guard:
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.check.outputs.proceed }}
+    steps:
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger — proceeding."
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          NY_HOUR=$(TZ=America/New_York date +%H)
+          if [ "$NY_HOUR" = "09" ]; then
+            echo "NY hour is 09 — proceeding."
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "NY hour is $NY_HOUR (not 09) — DST guard skipping."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  analyze:
+    needs: dst-guard
+    if: needs.dst-guard.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: QQQ   # Nasdaq 100 proxy (NQ futures)
+            symbol: QQQ
+            api_key_secret: GOOGLE_API_KEY_QQQ
+          - name: SPY   # S&P 500 proxy (ES futures)
+            symbol: SPY
+            api_key_secret: GOOGLE_API_KEY_SPY
+          - name: DIA   # Dow Jones proxy (YM futures)
+            symbol: DIA
+            api_key_secret: GOOGLE_API_KEY_DIA
+    steps:
+      - name: Skip if manual run targeted a different ticker
+        id: ticker-filter
+        run: |
+          REQUESTED="${{ github.event.inputs.ticker }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$REQUESTED" ] && [ "$REQUESTED" != "${{ matrix.name }}" ]; then
+            echo "Skipping ${{ matrix.name }} (manual run requested $REQUESTED)."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute NY date
+        if: steps.ticker-filter.outputs.skip == 'false'
+        id: nydate
+        run: echo "date=$(TZ=America/New_York date +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.ticker-filter.outputs.skip == 'false'
+
+      - uses: actions/setup-python@v5
+        if: steps.ticker-filter.outputs.skip == 'false'
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Restore TradingAgents memory cache
+        if: steps.ticker-filter.outputs.skip == 'false'
+        uses: actions/cache@v4
+        with:
+          path: ~/.tradingagents
+          key: tradingagents-memory-${{ matrix.name }}-${{ steps.nydate.outputs.date }}
+          restore-keys: |
+            tradingagents-memory-${{ matrix.name }}-
+
+      - name: Install TradingAgents
+        if: steps.ticker-filter.outputs.skip == 'false'
+        run: pip install -r requirements.txt
+
+      - name: Run analysis
+        if: steps.ticker-filter.outputs.skip == 'false'
+        id: analysis
+        env:
+          TICKER: ${{ matrix.symbol }}
+          GOOGLE_API_KEY: ${{ secrets[matrix.api_key_secret] }}
+          OUTPUT_FILE: decision.md
+        run: |
+          if [ -z "$GOOGLE_API_KEY" ]; then
+            echo "::error::Secret ${{ matrix.api_key_secret }} is not set."
+            exit 1
+          fi
+          set +e
+          python scripts/run_analysis.py
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Create issue with decision
+        if: steps.ticker-filter.outputs.skip == 'false' && hashFiles('decision.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ steps.analysis.outputs.exit_code == '0' && 'OK' || 'FAILED' }}
+        run: |
+          TITLE="📈 ${{ matrix.name }} — ${{ steps.nydate.outputs.date }} ($STATUS)"
+          gh issue create \
+            --title "$TITLE" \
+            --body-file decision.md \
+            --label "ticker:${{ matrix.name }}" \
+            --label "daily-analysis"
+
+      - name: Upload decision artifact
+        if: steps.ticker-filter.outputs.skip == 'false' && hashFiles('decision.md') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: decision-${{ matrix.name }}-${{ steps.nydate.outputs.date }}
+          path: decision.md
+          retention-days: 30
+
+      - name: Fail job if analysis failed
+        if: steps.ticker-filter.outputs.skip == 'false' && steps.analysis.outputs.exit_code != '0'
+        run: exit 1
