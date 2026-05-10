@@ -101,6 +101,7 @@ jobs:
           TICKER: ${{ matrix.symbol }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OUTPUT_FILE: decision.md
+          RATING_FILE: rating.txt
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then
             echo "::error::Secret OPENAI_API_KEY is not set."
@@ -109,6 +110,30 @@ jobs:
           set +e
           python scripts/run_analysis.py
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Execute paper trade on Alpaca
+        if: steps.ticker-filter.outputs.skip == 'false' && steps.analysis.outputs.exit_code == '0'
+        id: trade
+        continue-on-error: true
+        env:
+          TICKER: ${{ matrix.symbol }}
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          RATING_FILE: rating.txt
+          TRADE_OUTPUT_FILE: trade.md
+        run: python scripts/execute_trade.py
+
+      - name: Build issue body (trade summary + decision)
+        if: steps.ticker-filter.outputs.skip == 'false' && hashFiles('decision.md') != ''
+        run: |
+          : > issue_body.md
+          if [ -f trade.md ]; then
+            cat trade.md >> issue_body.md
+            echo "" >> issue_body.md
+            echo "---" >> issue_body.md
+            echo "" >> issue_body.md
+          fi
+          cat decision.md >> issue_body.md
 
       - name: Create issue with decision
         if: steps.ticker-filter.outputs.skip == 'false' && hashFiles('decision.md') != ''
@@ -121,7 +146,7 @@ jobs:
           gh label create "daily-analysis"           --color "5319E7" --force 2>/dev/null || true
           gh issue create \
             --title "$TITLE" \
-            --body-file decision.md \
+            --body-file issue_body.md \
             --label "ticker:${{ matrix.name }}" \
             --label "daily-analysis"
 

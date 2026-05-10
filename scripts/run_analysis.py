@@ -183,6 +183,9 @@ def main() -> int:
         output_file.write_text(
             render_decision(ticker, today, decision, final_state, plain_summary)
         )
+        # Write the bare rating to a sidecar file so the trade-execution
+        # step can read it without re-parsing the markdown.
+        Path(os.environ.get("RATING_FILE", "rating.txt")).write_text(str(decision).strip())
         print(f"Wrote decision for {ticker} to {output_file}")
         return 0
     except Exception as exc:

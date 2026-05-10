@@ -1,1 +1,2 @@
 tradingagents @ git+https://github.com/TauricResearch/TradingAgents.git@main
+alpaca-py>=0.30.0
