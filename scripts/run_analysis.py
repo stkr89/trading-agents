@@ -24,7 +24,7 @@ SUMMARY_INPUT_CHAR_LIMIT = 12_000
 # GitHub issue body limit is 65,536; leave headroom for headers/markdown.
 ISSUE_BODY_CHAR_LIMIT = 60_000
 
-RATING_SCALE_TABLE = """_Starting position: $5K per ticker. Adjust per the rule below._
+RATING_SCALE_TABLE = """_Starting position: $5K per ticker. Adjust per the rule below. Caps: 20% per ticker, 80% total exposure._
 
 | Rating | What it means | My action |
 |---|---|---|

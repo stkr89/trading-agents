@@ -120,7 +120,7 @@ def main() -> int:
             current_qty = 0.0
             current_value = 0.0
 
-        # Pull account state up-front so cap math can use it (was previously fetched after the order).
+        # Pull account state up-front so cap math can use it.
         account = trading.get_account()
         portfolio_value = float(account.portfolio_value)
         long_market_value = float(account.long_market_value)
