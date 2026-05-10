@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       ticker:
-        description: "Ticker to run (QQQ, SPY, DIA). Leave blank to run all."
+        description: "Ticker to run (AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA). Leave blank to run all."
         required: false
         default: ""
 
@@ -48,12 +48,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: QQQ   # Nasdaq 100 proxy (NQ futures)
-            symbol: QQQ
-          - name: SPY   # S&P 500 proxy (ES futures)
-            symbol: SPY
-          - name: DIA   # Dow Jones proxy (YM futures)
-            symbol: DIA
+          - { name: AAPL,  symbol: AAPL }
+          - { name: MSFT,  symbol: MSFT }
+          - { name: GOOGL, symbol: GOOGL }
+          - { name: AMZN,  symbol: AMZN }
+          - { name: NVDA,  symbol: NVDA }
+          - { name: META,  symbol: META }
+          - { name: TSLA,  symbol: TSLA }
     steps:
       - name: Skip if manual run targeted a different ticker
         id: ticker-filter
