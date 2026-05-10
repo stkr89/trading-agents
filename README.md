@@ -64,6 +64,12 @@ Set these under Settings → Secrets and variables → Actions:
 
 Sign up for Alpaca paper at [alpaca.markets](https://alpaca.markets) — paper accounts come with $100K virtual balance and no credit card requirement.
 
+### Initial positions
+
+The bot is fully stateless. On day one it sees zero positions and only acts on Buy / Overweight ratings (Underweight / Sell are no-ops with nothing to sell). Positions accumulate over the first few weeks as the framework rates each ticker bullishly.
+
+If you want a faster start, manually buy a baseline amount of each Mag 7 ticker in the Alpaca paper UI before the first scheduled run. The bot will then layer its daily ±$1K / ±$2K adjustments on top of whatever you already hold.
+
 ## Models in use
 
 | Role | Model |
@@ -72,8 +78,6 @@ Sign up for Alpaca paper at [alpaca.markets](https://alpaca.markets) — paper a
 | Quick-thinking (analysts, summary) | `gpt-5.4-mini` |
 
 Configured in [scripts/run_analysis.py](scripts/run_analysis.py). Swap providers/models by editing the config block.
-
-Approximate cost: ~$0.05-$0.15 per ticker per run, roughly $40-150/year for the full Mag 7 daily schedule.
 
 ## Triggering
 
