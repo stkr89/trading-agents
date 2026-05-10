@@ -24,6 +24,15 @@ SUMMARY_INPUT_CHAR_LIMIT = 12_000
 # GitHub issue body limit is 65,536; leave headroom for headers/markdown.
 ISSUE_BODY_CHAR_LIMIT = 60_000
 
+RATING_SCALE_TABLE = """| Rating | What it means |
+|---|---|
+| **Buy** | Strong conviction — go significantly long |
+| **Overweight** | Moderately bullish — increase position above neutral |
+| **Hold** | No edge — keep current position, don't add or trim |
+| **Underweight** | Moderately bearish — reduce position below neutral |
+| **Sell** | Strong conviction — exit the position or go short |
+"""
+
 PLAIN_ENGLISH_PROMPT = """You're explaining a stock analysis to a friend who is interested in investing
 but is NOT a finance expert. They don't know what RSI, MACD, EMA, or P/E ratio mean.
 
@@ -124,6 +133,9 @@ def render_decision(
     body = (
         f"# {ticker} — {date} — {rating_str}\n\n"
         f"_Generated {generated_at} (NY)_\n\n"
+        f"### 📖 Rating scale\n\n"
+        f"{RATING_SCALE_TABLE}\n"
+        f"---\n\n"
         f"{plain_summary}\n\n"
         f"---\n\n"
         f"{section('📋 Portfolio Manager Decision (the official call)', pm_narrative)}\n"

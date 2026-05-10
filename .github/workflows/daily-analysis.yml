@@ -132,6 +132,15 @@ jobs:
           path: decision.md
           retention-days: 30
 
+      - name: Upload TradingAgents state (memory log + per-run JSONs)
+        if: always() && steps.ticker-filter.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tradingagents-state-${{ matrix.name }}-${{ steps.nydate.outputs.date }}
+          path: ~/.tradingagents/
+          retention-days: 30
+          if-no-files-found: warn
+
       - name: Fail job if analysis failed
         if: steps.ticker-filter.outputs.skip == 'false' && steps.analysis.outputs.exit_code != '0'
         run: exit 1
