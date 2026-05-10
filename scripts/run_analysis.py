@@ -18,17 +18,16 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
-def render_decision(ticker: str, date: str, decision) -> str:
-    """Format the decision as markdown. Decision shape varies by version, so be defensive."""
-    if isinstance(decision, dict):
-        body = "\n".join(f"**{k}**: {v}" for k, v in decision.items())
-    else:
-        body = f"```\n{decision}\n```"
+def render_decision(ticker: str, date: str, rating, final_state: dict) -> str:
+    """Format the decision as markdown: rating + the PM's full narrative."""
+    narrative = (final_state or {}).get("final_trade_decision") or "_(no narrative returned)_"
+    rating_str = rating if isinstance(rating, str) else str(rating)
     return (
         f"# {ticker} — {date}\n\n"
         f"_Generated {datetime.now(ZoneInfo('America/New_York')).isoformat(timespec='seconds')} (NY)_\n\n"
-        "## Decision\n\n"
-        f"{body}\n"
+        f"**Rating:** {rating_str}\n\n"
+        "## Portfolio Manager Decision\n\n"
+        f"{narrative}\n"
     )
 
 
@@ -58,8 +57,8 @@ def main() -> int:
         config["online_tools"] = True
 
         ta = TradingAgentsGraph(debug=False, config=config)
-        _, decision = ta.propagate(ticker, today)
-        output_file.write_text(render_decision(ticker, today, decision))
+        final_state, decision = ta.propagate(ticker, today)
+        output_file.write_text(render_decision(ticker, today, decision, final_state))
         print(f"Wrote decision for {ticker} to {output_file}")
         return 0
     except Exception as exc:
