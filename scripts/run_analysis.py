@@ -52,8 +52,8 @@ def main() -> int:
 
         config = DEFAULT_CONFIG.copy()
         config["llm_provider"] = "google"
-        config["deep_think_llm"] = "gemini-2.5-flash"
-        config["quick_think_llm"] = "gemini-2.5-flash"
+        config["deep_think_llm"] = "gemini-2.5-flash-lite"
+        config["quick_think_llm"] = "gemini-2.5-flash-lite"
         config["max_debate_rounds"] = 1
         config["online_tools"] = True
 
