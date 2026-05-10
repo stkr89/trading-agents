@@ -24,13 +24,15 @@ SUMMARY_INPUT_CHAR_LIMIT = 12_000
 # GitHub issue body limit is 65,536; leave headroom for headers/markdown.
 ISSUE_BODY_CHAR_LIMIT = 60_000
 
-RATING_SCALE_TABLE = """| Rating | What it means |
-|---|---|
-| **Buy** | Strong conviction — go significantly long |
-| **Overweight** | Moderately bullish — increase position above neutral |
-| **Hold** | No edge — keep current position, don't add or trim |
-| **Underweight** | Moderately bearish — reduce position below neutral |
-| **Sell** | Strong conviction — exit the position or go short |
+RATING_SCALE_TABLE = """_Starting position: $5K per ticker. Adjust per the rule below._
+
+| Rating | What it means | My action |
+|---|---|---|
+| **Buy** | Strong conviction — significantly bullish | **Add $2K worth** |
+| **Overweight** | Moderately bullish | **Add $1K worth** |
+| **Hold** | No edge either direction | **Do nothing** |
+| **Underweight** | Moderately bearish | **Sell $1K worth** |
+| **Sell** | Strong conviction — significantly bearish | **Sell $2K worth** |
 """
 
 PLAIN_ENGLISH_PROMPT = """You're explaining a stock analysis to a friend who is interested in investing
