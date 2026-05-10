@@ -33,6 +33,15 @@ RATING_TO_DELTA = {
     "Sell": -2000.0,
 }
 
+# Risk caps (apply to BUYS only; SELLS are already clamped at zero — no shorting).
+# Both are expressed as a fraction of the live portfolio_value, so they scale
+# automatically as the account grows or shrinks.
+# Per-ticker cap: max % of portfolio that any single position can occupy.
+MAX_POSITION_PCT = 0.20
+# Account-level cap: max % of portfolio that can be invested in long positions
+# at once. Forces a cash buffer; prevents margin usage.
+MAX_TOTAL_EXPOSURE_PCT = 0.80
+
 
 def write_summary(
     file: Path,
@@ -111,20 +120,56 @@ def main() -> int:
             current_qty = 0.0
             current_value = 0.0
 
+        # Pull account state up-front so cap math can use it (was previously fetched after the order).
+        account = trading.get_account()
+        portfolio_value = float(account.portfolio_value)
+        long_market_value = float(account.long_market_value)
+        max_position_value = MAX_POSITION_PCT * portfolio_value
+        max_invested = MAX_TOTAL_EXPOSURE_PCT * portfolio_value
+
         latest = data.get_stock_latest_trade(StockLatestTradeRequest(symbol_or_symbols=ticker))
         last_price = float(latest[ticker].price)
 
         if delta > 0:
-            qty = round(delta / last_price, 6)
-            trading.submit_order(
-                MarketOrderRequest(
-                    symbol=ticker,
-                    qty=qty,
-                    side=OrderSide.BUY,
-                    time_in_force=TimeInForce.DAY,
+            ticker_headroom = max(0.0, max_position_value - current_value)
+            account_headroom = max(0.0, max_invested - long_market_value)
+            effective_delta = min(delta, ticker_headroom, account_headroom)
+
+            cap_reasons = []
+            if delta > ticker_headroom:
+                position_pct = (current_value / portfolio_value) if portfolio_value else 0
+                cap_reasons.append(
+                    f"per-ticker cap {MAX_POSITION_PCT:.0%} of portfolio "
+                    f"(~${max_position_value:,.0f}; currently {position_pct:.1%})"
                 )
-            )
-            action = f"Submitted **BUY** {qty} shares (~${delta:,.2f} at ~${last_price:,.2f})"
+            if delta > account_headroom:
+                exposure_pct = (long_market_value / portfolio_value) if portfolio_value else 0
+                cap_reasons.append(
+                    f"total exposure cap {MAX_TOTAL_EXPOSURE_PCT:.0%} (currently {exposure_pct:.1%})"
+                )
+
+            if effective_delta <= 0:
+                action = (
+                    f"Skipped BUY — already at cap (position ${current_value:,.2f}, "
+                    f"rule wanted +${delta:,.2f}). Hit: {', '.join(cap_reasons)}"
+                )
+            else:
+                qty = round(effective_delta / last_price, 6)
+                trading.submit_order(
+                    MarketOrderRequest(
+                        symbol=ticker,
+                        qty=qty,
+                        side=OrderSide.BUY,
+                        time_in_force=TimeInForce.DAY,
+                    )
+                )
+                if effective_delta < delta:
+                    action = (
+                        f"Submitted **BUY** {qty} shares (~${effective_delta:,.2f} at ~${last_price:,.2f}) "
+                        f"— capped from ${delta:,.0f} due to: {', '.join(cap_reasons)}"
+                    )
+                else:
+                    action = f"Submitted **BUY** {qty} shares (~${effective_delta:,.2f} at ~${last_price:,.2f})"
         else:
             sell_dollars = abs(delta)
             if current_value <= 0:
@@ -147,12 +192,12 @@ def main() -> int:
                 )
                 action = f"Submitted **SELL** {qty} shares (~${qty * last_price:,.2f} at ~${last_price:,.2f})"
 
-        account = trading.get_account()
         details = {
             "Position before this trade": current_value,
-            "Buying power": float(account.buying_power),
-            "Portfolio value": float(account.portfolio_value),
+            "Total invested (long)": long_market_value,
+            "Portfolio value": portfolio_value,
             "Cash": float(account.cash),
+            "Buying power": float(account.buying_power),
         }
         write_summary(output_file, ticker, rating, action=action, details=details)
         return 0

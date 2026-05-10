@@ -28,6 +28,15 @@ Every weekday at 9:00 AM New York time:
 
 Long-only by design. Selling is always clamped at zero — the bot never goes short.
 
+### Risk caps (applied to BUYS only)
+
+| Cap | Default | Purpose |
+|---|---|---|
+| `MAX_POSITION_PCT` | 20% | Max % of portfolio that any single ticker can occupy. Prevents one stock from dominating. |
+| `MAX_TOTAL_EXPOSURE_PCT` | 80% | Max % of portfolio that can be long at once. Forces a cash buffer; prevents margin usage. |
+
+Both caps are percentages of the live `portfolio_value`, so they scale with the account — a 20% cap means $20K when you have $100K and grows to $24K if your portfolio grows to $120K. Buy orders are scaled down to fit inside both caps. If a buy would be capped to $0 (already at limit), it is skipped entirely and the trade summary explains why. Both constants live at the top of [scripts/execute_trade.py](scripts/execute_trade.py) and are easy to tune.
+
 ## File layout
 
 ```
