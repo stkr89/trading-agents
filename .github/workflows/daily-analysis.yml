@@ -50,13 +50,10 @@ jobs:
         include:
           - name: QQQ   # Nasdaq 100 proxy (NQ futures)
             symbol: QQQ
-            api_key_secret: GOOGLE_API_KEY_QQQ
           - name: SPY   # S&P 500 proxy (ES futures)
             symbol: SPY
-            api_key_secret: GOOGLE_API_KEY_SPY
           - name: DIA   # Dow Jones proxy (YM futures)
             symbol: DIA
-            api_key_secret: GOOGLE_API_KEY_DIA
     steps:
       - name: Skip if manual run targeted a different ticker
         id: ticker-filter
@@ -101,11 +98,11 @@ jobs:
         id: analysis
         env:
           TICKER: ${{ matrix.symbol }}
-          GOOGLE_API_KEY: ${{ secrets[matrix.api_key_secret] }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OUTPUT_FILE: decision.md
         run: |
-          if [ -z "$GOOGLE_API_KEY" ]; then
-            echo "::error::Secret ${{ matrix.api_key_secret }} is not set."
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::Secret OPENAI_API_KEY is not set."
             exit 1
           fi
           set +e

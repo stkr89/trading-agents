@@ -2,7 +2,7 @@
 
 Reads:
   TICKER          - ticker symbol (e.g. NVDA)
-  GOOGLE_API_KEY  - Gemini API key
+  OPENAI_API_KEY  - OpenAI API key
   OUTPUT_FILE     - path for markdown output (default: decision.md)
 
 Exit codes:
@@ -51,9 +51,9 @@ def main() -> int:
         from tradingagents.graph.trading_graph import TradingAgentsGraph
 
         config = DEFAULT_CONFIG.copy()
-        config["llm_provider"] = "google"
-        config["deep_think_llm"] = "gemini-2.5-flash-lite"
-        config["quick_think_llm"] = "gemini-2.5-flash-lite"
+        config["llm_provider"] = "openai"
+        config["deep_think_llm"] = "gpt-5.4"
+        config["quick_think_llm"] = "gpt-5.4-mini"
         config["max_debate_rounds"] = 1
         config["online_tools"] = True
 
